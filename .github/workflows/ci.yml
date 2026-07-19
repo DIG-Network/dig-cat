@@ -36,14 +36,17 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all --check
 
-      - name: Check clippy
-        run: cargo clippy --all-targets -- -D warnings
+      # Lint/build/doc with ALL features so the optional `dexie` network path can never rot
+      # (a feature that doesn't compile or lint is a latent bug). Coverage stays default-features
+      # (network-free) in the job below.
+      - name: Check clippy (all features)
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
-      - name: Build (release)
-        run: cargo build --release
+      - name: Build (release, all features)
+        run: cargo build --release --all-features
 
-      - name: Check documentation
-        run: cargo doc --no-deps
+      - name: Check documentation (all features)
+        run: cargo doc --no-deps --all-features
 
   coverage:
     name: Coverage (>=80% lines)

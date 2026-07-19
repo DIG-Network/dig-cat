@@ -12,7 +12,7 @@
 # feature PR against this foundation.
 [package]
 name = "dig-cat"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 rust-version = "1.75.0"
 license = "Apache-2.0 OR MIT"
@@ -25,6 +25,12 @@ categories = ["cryptography::cryptocurrencies", "api-bindings"]
 [lib]
 # rlib for native consumers; cdylib so a later unit can compile a wasm façade over the same crate.
 crate-type = ["cdylib", "rlib"]
+
+[features]
+# Core dig-cat is network-free (INV-1). The `dexie` feature adds the ONLY network call —
+# off-chain CAT display metadata over a single HTTPS GET — and is OFF by default.
+default = []
+dexie = ["dep:ureq", "dep:serde", "dep:serde_json"]
 
 [dependencies]
 # The chia-wallet-sdk umbrella is the byte-source-of-truth for every CAT puzzle, layer, and spend
@@ -39,11 +45,21 @@ chia-wallet-sdk = "0.30"
 chia-protocol = "0.26"
 chia-puzzle-types = "0.26"
 clvm-traits = "0.26"
+# `Allocator`/`NodePtr` for the pure CHIP-0026 decode path (the version chia-wallet-sdk 0.30 resolves).
+clvmr = "0.14"
 # The crate error taxonomy (SPEC §6). thiserror 2 matches the sibling DIG crates.
 thiserror = "2"
+
+# --- `dexie` feature only: the single off-chain metadata HTTPS GET (INV-1) ---
+# ureq = minimal blocking HTTP with rustls (no async runtime in a foundation crate).
+ureq = { version = "2", optional = true, default-features = false, features = ["tls"] }
+serde = { version = "1", optional = true, features = ["derive"] }
+serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 # The in-process Chia Simulator + BLS keypair helpers for building real coin spends in tests.
 chia-sdk-test = "0.30"
 # Hex assertions on computed asset ids / signature messages / coin ids in tests.
 hex = "0.4"
+# anyhow for ergonomic error handling in the simulator round-trip integration tests.
+anyhow = "1"
