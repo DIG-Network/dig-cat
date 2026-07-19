@@ -14,9 +14,7 @@ use crate::tail::{payment_conditions, CatPayment, TailKind};
 use chia_protocol::Bytes32;
 use chia_puzzle_types::cat::EverythingWithSignatureTailArgs;
 use chia_puzzle_types::Memos;
-use chia_wallet_sdk::driver::{
-    Cat, CatSpend, SpendContext, SpendWithConditions, StandardLayer,
-};
+use chia_wallet_sdk::driver::{Cat, CatSpend, SpendContext, SpendWithConditions, StandardLayer};
 use chia_wallet_sdk::prelude::{NodePtr, PublicKey};
 use chia_wallet_sdk::types::conditions::{CreateCoin, RunCatTail};
 use chia_wallet_sdk::types::Conditions;
@@ -72,8 +70,11 @@ pub fn build_cat_melt(req: MeltCatRequest) -> Result<UnsignedCatSpend, CatError>
     let mut lead_conditions = payment_conditions(&mut ctx, &req.keep_payments)?;
     if change > 0 {
         let change_memos: Memos<NodePtr> = ctx.memos(&vec![req.change_p2_puzzle_hash])?;
-        lead_conditions =
-            lead_conditions.with(CreateCoin::new(req.change_p2_puzzle_hash, change, change_memos));
+        lead_conditions = lead_conditions.with(CreateCoin::new(
+            req.change_p2_puzzle_hash,
+            change,
+            change_memos,
+        ));
     }
     lead_conditions = lead_conditions.with(RunCatTail::new(tail, NodePtr::NIL));
 
@@ -115,5 +116,66 @@ fn meltable_issuer(tail: &TailKind, asset_id: Bytes32) -> Result<PublicKey, CatE
             expected: asset_id,
             got: Bytes32::default(),
         }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chia_wallet_sdk::test::BlsPair;
+
+    fn melt_request(asset_id: Bytes32, tail: TailKind, melt_amount: u64) -> MeltCatRequest {
+        MeltCatRequest {
+            cats: vec![],
+            owner_pk: BlsPair::new(1).pk,
+            asset_id,
+            tail,
+            melt_amount,
+            keep_payments: vec![],
+            change_p2_puzzle_hash: Bytes32::from([8u8; 32]),
+        }
+    }
+
+    #[test]
+    fn zero_melt_amount_is_rejected() {
+        let err = build_cat_melt(melt_request(
+            Bytes32::from([1u8; 32]),
+            TailKind::SingleIssuance,
+            0,
+        ))
+        .unwrap_err();
+        assert!(matches!(err, CatError::ZeroAmount));
+    }
+
+    #[test]
+    fn single_issuance_tail_is_rejected() {
+        let err = build_cat_melt(melt_request(
+            Bytes32::from([1u8; 32]),
+            TailKind::SingleIssuance,
+            10,
+        ))
+        .unwrap_err();
+        assert!(matches!(err, CatError::TailMismatch { .. }));
+    }
+
+    #[test]
+    fn multi_issuance_tail_must_curry_to_asset_id() {
+        let issuer = BlsPair::new(2);
+        // A wrong asset id (not the issuer's TAIL hash) must be rejected.
+        let err = build_cat_melt(melt_request(
+            Bytes32::from([0xFFu8; 32]),
+            TailKind::MultiIssuance {
+                issuer_pk: issuer.pk,
+            },
+            10,
+        ))
+        .unwrap_err();
+        match err {
+            CatError::TailMismatch { expected, got } => {
+                assert_eq!(expected, Bytes32::from([0xFFu8; 32]));
+                assert_eq!(got, multi_issuance_asset_id(issuer.pk));
+            }
+            other => panic!("expected TailMismatch, got {other:?}"),
+        }
     }
 }

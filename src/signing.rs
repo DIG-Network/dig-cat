@@ -15,6 +15,9 @@ use chia_wallet_sdk::types::{MAINNET_CONSTANTS, TESTNET11_CONSTANTS};
 /// `AGG_SIG_*` additional data mixed into each signed message — it changes nothing about the spends
 /// themselves.
 #[derive(Debug, Clone)]
+// `Custom` carries the full ~224-byte constants inline (the public API speaks in `AggSigConstants`,
+// not a boxed handle). The type is `Copy` and networks are short-lived, so the size gap is fine.
+#[allow(clippy::large_enum_variant)]
 pub enum Network {
     /// Chia mainnet.
     Mainnet,
@@ -30,7 +33,7 @@ impl Network {
         match self {
             Network::Mainnet => AggSigConstants::from(&*MAINNET_CONSTANTS),
             Network::Testnet11 => AggSigConstants::from(&*TESTNET11_CONSTANTS),
-            Network::Custom(constants) => constants.clone(),
+            Network::Custom(constants) => *constants,
         }
     }
 }
@@ -47,5 +50,34 @@ pub fn required_signatures(
 ) -> Result<Vec<RequiredSignature>, CatError> {
     let mut allocator = Allocator::new();
     let constants = network.agg_sig_constants();
-    RequiredSignature::from_coin_spends(&mut allocator, spends, &constants).map_err(CatError::Signer)
+    RequiredSignature::from_coin_spends(&mut allocator, spends, &constants)
+        .map_err(CatError::Signer)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn no_spends_require_no_signatures() {
+        for network in [Network::Mainnet, Network::Testnet11] {
+            assert!(required_signatures(&[], &network).unwrap().is_empty());
+        }
+    }
+
+    #[test]
+    fn custom_network_uses_supplied_constants() {
+        let constants = AggSigConstants::from(&*MAINNET_CONSTANTS);
+        let network = Network::Custom(constants);
+        // Mainnet and a Custom-with-mainnet-constants derive the same (empty) requirement set.
+        assert_eq!(
+            required_signatures(&[], &network).unwrap().len(),
+            required_signatures(&[], &Network::Mainnet).unwrap().len()
+        );
+        // The custom constants match mainnet's agg_sig_me data.
+        assert_eq!(
+            constants.me(),
+            AggSigConstants::from(&*MAINNET_CONSTANTS).me()
+        );
+    }
 }

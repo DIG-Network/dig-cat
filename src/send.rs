@@ -57,8 +57,11 @@ pub fn build_cat_spend(req: SendCatRequest) -> Result<UnsignedCatSpend, CatError
     let mut lead_conditions = payment_conditions(&mut ctx, &req.payments)?;
     if change > 0 {
         let change_memos: Memos<clvmr::NodePtr> = ctx.memos(&vec![req.change_p2_puzzle_hash])?;
-        lead_conditions =
-            lead_conditions.with(CreateCoin::new(req.change_p2_puzzle_hash, change, change_memos));
+        lead_conditions = lead_conditions.with(CreateCoin::new(
+            req.change_p2_puzzle_hash,
+            change,
+            change_memos,
+        ));
     }
 
     let cat_spends = build_ring_spends(&mut ctx, &standard, &selected, lead_conditions)?;
@@ -137,4 +140,89 @@ pub fn build_cat_spend_with_inner(
         children,
         plan: CatValuePlan::new(inputs, created, 0),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chia_protocol::Coin;
+    use chia_puzzle_types::LineageProof;
+    use chia_wallet_sdk::driver::{CatInfo, Spend};
+    use chia_wallet_sdk::prelude::NodePtr;
+    use chia_wallet_sdk::test::BlsPair;
+
+    const ASSET: Bytes32 = Bytes32::new([0xABu8; 32]);
+
+    fn spendable_cat(amount: u64, asset: Bytes32, with_proof: bool) -> Cat {
+        let coin = Coin::new(
+            Bytes32::from([1u8; 32]),
+            Bytes32::from([0xEEu8; 32]),
+            amount,
+        );
+        let proof = with_proof.then_some(LineageProof {
+            parent_parent_coin_info: Bytes32::from([1u8; 32]),
+            parent_inner_puzzle_hash: Bytes32::from([2u8; 32]),
+            parent_amount: amount,
+        });
+        Cat::new(
+            coin,
+            proof,
+            CatInfo::new(asset, None, Bytes32::from([3u8; 32])),
+        )
+    }
+
+    fn send_request(cats: Vec<Cat>, payment: u64) -> SendCatRequest {
+        SendCatRequest {
+            cats,
+            owner_pk: BlsPair::new(1).pk,
+            asset_id: ASSET,
+            payments: vec![CatPayment::new(Bytes32::from([9u8; 32]), payment)],
+            change_p2_puzzle_hash: Bytes32::from([8u8; 32]),
+        }
+    }
+
+    #[test]
+    fn zero_total_payment_is_rejected() {
+        let err =
+            build_cat_spend(send_request(vec![spendable_cat(10, ASSET, true)], 0)).unwrap_err();
+        assert!(matches!(err, CatError::ZeroAmount));
+    }
+
+    #[test]
+    fn shortfall_surfaces_insufficient_funds() {
+        let err =
+            build_cat_spend(send_request(vec![spendable_cat(10, ASSET, true)], 1_000)).unwrap_err();
+        assert!(matches!(
+            err,
+            CatError::InsufficientFunds {
+                need: 1_000,
+                have: 10
+            }
+        ));
+    }
+
+    #[test]
+    fn with_inner_rejects_empty() {
+        let mut ctx = SpendContext::new();
+        let err = build_cat_spend_with_inner(&mut ctx, &[], ASSET).unwrap_err();
+        assert!(matches!(err, CatError::ZeroAmount));
+    }
+
+    #[test]
+    fn with_inner_rejects_asset_mismatch() {
+        let mut ctx = SpendContext::new();
+        let cat = spendable_cat(10, Bytes32::from([0xCDu8; 32]), true);
+        let spend = Spend::new(NodePtr::NIL, NodePtr::NIL);
+        let err = build_cat_spend_with_inner(&mut ctx, &[(cat, spend)], ASSET).unwrap_err();
+        assert!(matches!(err, CatError::TailMismatch { .. }));
+    }
+
+    #[test]
+    fn with_inner_rejects_missing_lineage_proof() {
+        let mut ctx = SpendContext::new();
+        let cat = spendable_cat(10, ASSET, false);
+        let spend = Spend::new(NodePtr::NIL, NodePtr::NIL);
+        let err = build_cat_spend_with_inner(&mut ctx, &[(cat, spend)], ASSET).unwrap_err();
+        assert!(matches!(err, CatError::MissingLineageProof(_)));
+    }
 }

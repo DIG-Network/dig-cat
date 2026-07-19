@@ -47,9 +47,9 @@ pub use asset::{cat_puzzle_hash, multi_issuance_asset_id, single_issuance_asset_
 pub use error::CatError;
 pub use lineage::{decode_cat_spend, hydrate_cat, reconstruct_children, DecodedCat};
 pub use melt::{build_cat_melt, MeltCatRequest};
-pub use metadata::CatMetadata;
 #[cfg(feature = "dexie")]
 pub use metadata::resolve_metadata;
+pub use metadata::CatMetadata;
 pub use selection::{select_cats, MAX_CAT_INPUTS};
 pub use send::{build_cat_spend, build_cat_spend_with_inner, SendCatRequest};
 pub use signing::{required_signatures, Network};

@@ -6,9 +6,7 @@
 //! what a full puzzle build would emit.
 
 use chia_protocol::Bytes32;
-use chia_puzzle_types::cat::{
-    CatArgs, EverythingWithSignatureTailArgs, GenesisByCoinIdTailArgs,
-};
+use chia_puzzle_types::cat::{CatArgs, EverythingWithSignatureTailArgs, GenesisByCoinIdTailArgs};
 use chia_wallet_sdk::prelude::{PublicKey, TreeHash};
 
 /// The asset id of a **single-issuance** CAT (the `GenesisByCoinId` TAIL).
@@ -56,7 +54,10 @@ mod tests {
     fn single_issuance_asset_id_is_genesis_sensitive() {
         let a = single_issuance_asset_id(Bytes32::from([1u8; 32]));
         let b = single_issuance_asset_id(Bytes32::from([2u8; 32]));
-        assert_ne!(a, b, "different genesis coins must yield different asset ids");
+        assert_ne!(
+            a, b,
+            "different genesis coins must yield different asset ids"
+        );
     }
 
     #[test]

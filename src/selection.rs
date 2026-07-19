@@ -33,7 +33,7 @@ pub fn select_cats(
         .copied()
         .collect();
     // Largest-first keeps the input count — and thus the spend size — minimal.
-    candidates.sort_by(|a, b| b.coin.amount.cmp(&a.coin.amount));
+    candidates.sort_by_key(|c| std::cmp::Reverse(c.coin.amount));
 
     let available: u64 = candidates.iter().map(|c| c.coin.amount).sum();
     if available < amount {
@@ -79,18 +79,30 @@ mod tests {
     }
 
     fn with_asset_and_proof(amount: u64, parent: u8, asset: Bytes32, has_proof: bool) -> Cat {
-        let coin = Coin::new(Bytes32::from([parent; 32]), Bytes32::from([0xEEu8; 32]), amount);
+        let coin = Coin::new(
+            Bytes32::from([parent; 32]),
+            Bytes32::from([0xEEu8; 32]),
+            amount,
+        );
         let proof = has_proof.then_some(LineageProof {
             parent_parent_coin_info: Bytes32::from([parent; 32]),
             parent_inner_puzzle_hash: Bytes32::from([0x11u8; 32]),
             parent_amount: amount,
         });
-        Cat::new(coin, proof, CatInfo::new(asset, None, Bytes32::from([0x11u8; 32])))
+        Cat::new(
+            coin,
+            proof,
+            CatInfo::new(asset, None, Bytes32::from([0x11u8; 32])),
+        )
     }
 
     #[test]
     fn selects_largest_first_and_stops_early() {
-        let cats = vec![spendable(40_000, 1), spendable(70_000, 2), spendable(5_000, 3)];
+        let cats = vec![
+            spendable(40_000, 1),
+            spendable(70_000, 2),
+            spendable(5_000, 3),
+        ];
         let (sel, sum) = select_cats(&cats, ASSET, 100_000).unwrap();
         assert_eq!(sum, 110_000);
         assert_eq!(sel.len(), 2);
@@ -110,13 +122,25 @@ mod tests {
     fn errors_when_insufficient() {
         let cats = vec![spendable(40_000, 1), spendable(30_000, 2)];
         let err = select_cats(&cats, ASSET, 100_000).unwrap_err();
-        assert!(matches!(err, CatError::InsufficientFunds { need: 100_000, have: 70_000 }));
+        assert!(matches!(
+            err,
+            CatError::InsufficientFunds {
+                need: 100_000,
+                have: 70_000
+            }
+        ));
     }
 
     #[test]
     fn errors_on_empty() {
         let err = select_cats(&[], ASSET, 10_000).unwrap_err();
-        assert!(matches!(err, CatError::InsufficientFunds { need: 10_000, have: 0 }));
+        assert!(matches!(
+            err,
+            CatError::InsufficientFunds {
+                need: 10_000,
+                have: 0
+            }
+        ));
     }
 
     #[test]
@@ -127,7 +151,10 @@ mod tests {
         ];
         // Only the ASSET coin counts; the OTHER_ASSET coin is ignored.
         let err = select_cats(&cats, ASSET, 100_000).unwrap_err();
-        assert!(matches!(err, CatError::InsufficientFunds { have: 60_000, .. }));
+        assert!(matches!(
+            err,
+            CatError::InsufficientFunds { have: 60_000, .. }
+        ));
     }
 
     #[test]
@@ -143,6 +170,12 @@ mod tests {
         // 60 coins of 1 unit each, needing 55 → exceeds the 50-input cap.
         let cats: Vec<Cat> = (0..60).map(|i| spendable(1, i as u8)).collect();
         let err = select_cats(&cats, ASSET, 55).unwrap_err();
-        assert!(matches!(err, CatError::TooManyInputs { needed: 55, cap: 50 }));
+        assert!(matches!(
+            err,
+            CatError::TooManyInputs {
+                needed: 55,
+                cap: 50
+            }
+        ));
     }
 }

@@ -75,7 +75,11 @@ pub(crate) fn payment_create_coin(
     memo_items.push(payment.p2_puzzle_hash); // recipient hint first
     memo_items.extend_from_slice(&payment.memos);
     let memos: Memos<clvmr::NodePtr> = ctx.memos(&memo_items)?;
-    Ok(CreateCoin::new(payment.p2_puzzle_hash, payment.amount, memos))
+    Ok(CreateCoin::new(
+        payment.p2_puzzle_hash,
+        payment.amount,
+        memos,
+    ))
 }
 
 /// A request to issue (mint) a new CAT from a funding coin.
@@ -141,9 +145,13 @@ pub fn issue_cat(req: IssueCatRequest) -> Result<IssueCatResult, CatError> {
         TailKind::SingleIssuance => {
             Cat::issue_with_coin(&mut ctx, parent_coin_id, req.amount, mint_conditions)?
         }
-        TailKind::MultiIssuance { issuer_pk } => {
-            Cat::issue_with_key(&mut ctx, parent_coin_id, *issuer_pk, req.amount, mint_conditions)?
-        }
+        TailKind::MultiIssuance { issuer_pk } => Cat::issue_with_key(
+            &mut ctx,
+            parent_coin_id,
+            *issuer_pk,
+            req.amount,
+            mint_conditions,
+        )?,
     };
 
     // Return XCH change (if any) to the funder's standard puzzle, then spend the funding coin.
@@ -167,4 +175,60 @@ pub fn issue_cat(req: IssueCatRequest) -> Result<IssueCatResult, CatError> {
         plan: CatValuePlan::new(0, req.amount, 0),
     };
     Ok(IssueCatResult { asset_id, unsigned })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chia_wallet_sdk::test::BlsPair;
+
+    fn request(amount: u64, recipients: Vec<CatPayment>, funding: u64) -> IssueCatRequest {
+        let funder = BlsPair::new(1);
+        IssueCatRequest {
+            funding_coin: Coin::new(Bytes32::from([1u8; 32]), funder.puzzle_hash, funding),
+            funder_pk: funder.pk,
+            amount,
+            recipients,
+            tail: TailKind::SingleIssuance,
+        }
+    }
+
+    #[test]
+    fn zero_amount_is_rejected() {
+        let err = issue_cat(request(0, vec![], 0)).unwrap_err();
+        assert!(matches!(err, CatError::ZeroAmount));
+    }
+
+    #[test]
+    fn recipients_must_sum_to_amount() {
+        let recipients = vec![CatPayment::new(Bytes32::from([2u8; 32]), 40_000)];
+        let err = issue_cat(request(100_000, recipients, 100_000)).unwrap_err();
+        assert!(matches!(
+            err,
+            CatError::AmountMismatch {
+                expected: 100_000,
+                got: 40_000
+            }
+        ));
+    }
+
+    #[test]
+    fn funding_must_cover_the_mint() {
+        let recipients = vec![CatPayment::new(Bytes32::from([2u8; 32]), 100_000)];
+        let err = issue_cat(request(100_000, recipients, 50_000)).unwrap_err();
+        assert!(matches!(
+            err,
+            CatError::InsufficientFunds {
+                need: 100_000,
+                have: 50_000
+            }
+        ));
+    }
+
+    #[test]
+    fn cat_payment_new_has_no_extra_memos() {
+        let p = CatPayment::new(Bytes32::from([3u8; 32]), 5);
+        assert!(p.memos.is_empty());
+        assert_eq!(p.amount, 5);
+    }
 }
