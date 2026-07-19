@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "asset": {
+    "id": "a628c1c2c6fcb74d53746157e438e108eab5c0bb3e5c80ff9b1910b3e4832913",
+    "code": "SBX",
+    "name": "Spacebucks",
+    "denom": 1000,
+    "website": "https://spacebuckscoin.com",
+    "description": "The galactic monetary standard.",
+    "liquidity": [
+      556.1202501380676,
+      11682183.816999974
+    ],
+    "current_avg_price": 0.00021107692494929308,
+    "volume": [
+      811.107735532316,
+      3622812.139
+    ]
+  }
+}
