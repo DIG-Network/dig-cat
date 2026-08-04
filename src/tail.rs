@@ -141,14 +141,19 @@ pub fn issue_cat(req: IssueCatRequest) -> Result<IssueCatResult, CatError> {
     let mint_conditions = payment_conditions(&mut ctx, &req.recipients)?;
 
     let parent_coin_id = req.funding_coin.coin_id();
+    // chia-sdk-driver 0.34 renamed the issuance helpers (`issue_with_coin`/`issue_with_key` →
+    // `single_issuance`/`multi_issuance`) and added a `hidden_puzzle_hash: Option<Bytes32>` argument
+    // for the optional revocation layer. dig-cat issues plain, non-revocable CATs, so we pass `None`
+    // — byte-identical to the 0.30 issuance (no revocation layer curried in).
     let (issue_conditions, children) = match &req.tail {
         TailKind::SingleIssuance => {
-            Cat::issue_with_coin(&mut ctx, parent_coin_id, req.amount, mint_conditions)?
+            Cat::single_issuance(&mut ctx, parent_coin_id, None, req.amount, mint_conditions)?
         }
-        TailKind::MultiIssuance { issuer_pk } => Cat::issue_with_key(
+        TailKind::MultiIssuance { issuer_pk } => Cat::multi_issuance(
             &mut ctx,
             parent_coin_id,
             *issuer_pk,
+            None,
             req.amount,
             mint_conditions,
         )?,

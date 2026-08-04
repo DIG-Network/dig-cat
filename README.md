@@ -7,7 +7,7 @@ The DIG Network canonical **Chia CAT (Colored Coin, CHIP-0002) expert crate**.
 (CHIP-0026), and reports the exact signatures a caller must produce. It **never holds a secret key,
 never signs, and never touches the network**: the consumer signs the reported messages, assembles the
 `SpendBundle`, and broadcasts. Every on-chain byte comes from
-[`chia-wallet-sdk`](https://crates.io/crates/chia-wallet-sdk) 0.30.
+[`chia-wallet-sdk`](https://crates.io/crates/chia-wallet-sdk) 0.34.
 
 ## Custody guarantee (INV-1..4)
 
