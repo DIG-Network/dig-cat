@@ -16,7 +16,7 @@
 //! - **INV-3 — Unsigned output.** Every builder returns unsigned [`chia_protocol::CoinSpend`]s;
 //!   [`required_signatures`] reports what the caller must sign.
 //! - **INV-4 — SDK byte-source-of-truth.** Every CAT puzzle/layer/curry/spend byte comes from
-//!   `chia-wallet-sdk` (0.30 / chia-protocol 0.26). dig-cat never re-implements a puzzle, hand-rolls a
+//!   `chia-wallet-sdk` (0.34 / chia-protocol 0.36). dig-cat never re-implements a puzzle, hand-rolls a
 //!   spend, or hand-computes a TAIL/curry hash; ring construction is delegated to [`Cat::spend_all`].
 //!
 //! ## Operations

@@ -36,15 +36,17 @@ pub fn decode_cat_spend(
     let solution_ptr = alloc_program(&mut allocator, solution)?;
     let puzzle = Puzzle::parse(&allocator, puzzle_ptr);
 
-    let Some((cat, inner_puzzle, inner_solution)) =
-        Cat::parse(&allocator, coin, puzzle, solution_ptr)?
-    else {
+    // chia-sdk-driver 0.34 returns a `ParsedCat` struct (was a `(Cat, Puzzle, NodePtr)` tuple in
+    // 0.30). Its `p2_puzzle`/`p2_solution` fields are the inner (p2) puzzle + solution the CAT layer
+    // reveals; map them onto our stable `DecodedCat` shape. The added `revoked` flag (revocation
+    // layer) is not part of dig-cat's decode contract and is intentionally not surfaced.
+    let Some(parsed) = Cat::parse(&allocator, coin, puzzle, solution_ptr)? else {
         return Ok(None);
     };
     Ok(Some(DecodedCat {
-        cat,
-        inner_puzzle,
-        inner_solution,
+        cat: parsed.cat,
+        inner_puzzle: parsed.p2_puzzle,
+        inner_solution: parsed.p2_solution,
     }))
 }
 

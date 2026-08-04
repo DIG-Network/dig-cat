@@ -6,8 +6,8 @@ are used in the RFC 2119 sense.
 
 dig-cat is a pure builder library: it constructs the unsigned `CoinSpend`s for CAT operations and
 reports what must be signed. It does not sign, hold keys, or touch the chain (except one optional,
-feature-gated metadata lookup). Every on-chain byte is produced by `chia-wallet-sdk` 0.30
-(`chia-protocol` 0.26) — the byte-source-of-truth.
+feature-gated metadata lookup). Every on-chain byte is produced by `chia-wallet-sdk` 0.34
+(`chia-protocol` 0.36) — the byte-source-of-truth.
 
 ## 1. Invariants
 
@@ -136,5 +136,5 @@ feature-gated metadata lookup). Every on-chain byte is produced by `chia-wallet-
   spends exactly one asset id.
 - **Key-free.** No `SecretKey` or signing call in non-test code.
 - **Fail-closed lineage.** A coin without a lineage proof is never spent.
-- **Byte conformance.** Every puzzle/spend byte is byte-identical to `chia-wallet-sdk` 0.30, and the
+- **Byte conformance.** Every puzzle/spend byte is byte-identical to `chia-wallet-sdk` 0.34, and the
   builders are simulator-validated end to end.
