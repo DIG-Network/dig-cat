@@ -7,12 +7,12 @@
 # SpendBundle, and broadcasts. See SPEC.md for the normative contract.
 #
 # This is the v0.0.0 bootstrap: it establishes the crate, the release/quality pipeline, and proves
-# the pinned chia-wallet-sdk 0.30 dependency tree resolves + compiles. The complete CAT builder
+# the pinned chia-wallet-sdk 0.36 dependency tree resolves + compiles. The complete CAT builder
 # surface (issuance / send / melt / lineage / multi-TAIL) lands as v0.1.0 in a single triple-gated
 # feature PR against this foundation.
 [package]
 name = "dig-cat"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 rust-version = "1.75.0"
 license = "Apache-2.0 OR MIT"
@@ -34,18 +34,18 @@ dexie = ["dep:ureq", "dep:serde", "dep:serde_json"]
 
 [dependencies]
 # The chia-wallet-sdk umbrella is the byte-source-of-truth for every CAT puzzle, layer, and spend
-# (INV-4). Pinned to the 0.34 family the whole DIG on-chain line rides (chia-protocol 0.36). We
+# (INV-4). Pinned to the 0.36 family the whole DIG on-chain line rides (chia-protocol 0.36). We
 # consume the CAT primitive, the standard p2 layer, the spend context, and the pure signing
 # calculator through it so the chia-* tree resolves to ONE coherent version set.
-chia-wallet-sdk = "0.34"
-# Direct type deps, pinned to EXACTLY the versions chia-wallet-sdk 0.34 resolves to (a mismatch is a
+chia-wallet-sdk = "0.36"
+# Direct type deps, pinned to EXACTLY the versions chia-wallet-sdk 0.36 resolves to (a mismatch is a
 # hard cargo error). chia-protocol carries wire types (`Coin`, `CoinSpend`, `Bytes32`);
 # chia-puzzle-types carries `LineageProof`/`CoinProof`; clvm-traits carries the CLVM (de)serialization
 # traits used to parse/curry CAT puzzles.
 chia-protocol = "0.36.1"
 chia-puzzle-types = "0.36.1"
 clvm-traits = "0.36.1"
-# `Allocator`/`NodePtr` for the pure CHIP-0026 decode path (the version chia-wallet-sdk 0.34 resolves).
+# `Allocator`/`NodePtr` for the pure CHIP-0026 decode path (the version chia-wallet-sdk 0.36 resolves).
 clvmr = "0.16.2"
 # The crate error taxonomy (SPEC §6). thiserror 2 matches the sibling DIG crates.
 thiserror = "2"
@@ -58,7 +58,7 @@ serde_json = { version = "1", optional = true }
 
 [dev-dependencies]
 # The in-process Chia Simulator + BLS keypair helpers for building real coin spends in tests.
-chia-sdk-test = "0.34"
+chia-sdk-test = "0.36"
 # Hex assertions on computed asset ids / signature messages / coin ids in tests.
 hex = "0.4"
 # anyhow for ergonomic error handling in the simulator round-trip integration tests.
